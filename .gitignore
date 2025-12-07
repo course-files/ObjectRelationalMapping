@@ -209,3 +209,4 @@ __marimo__/
 
 roughwork/
 data/processed_scaled_down_reviews_with_topics_and_sentiments.csv
+mydatabase.db
