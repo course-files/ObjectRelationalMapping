@@ -1,9 +1,9 @@
-# Sentiment Analysis
+# Object Relational Mapping (ORM)
 
 | Key              | Value                                                                                                                                                                                                                                                                                              |
 |:-----------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **Course Codes** | BBT 4206, BFS 4102                                                                                                                                                                                                                                                                                 |
-| **Course Names** | BBT 4206: Business Intelligence II (Week 10-12 of 13) and <br/>BFS 4102: Advanced Business Data Analytics (Week 10-12 of 13)                                                                                                                                                                       |
+| **Course Names** | BBT 4106: Business Intelligence I (Week 4-6 of 13) and <br/>BFS 4102: Advanced Business Data Analytics (Week 10-12 of 13)                                                                                                                                                                          |
 | **Semester**     | August to November 2025                                                                                                                                                                                                                                                                            |
 | **Lecturer**     | Allan Omondi                                                                                                                                                                                                                                                                                       |
 | **Contact**      | aomondi@strathmore.edu                                                                                                                                                                                                                                                                             |
@@ -44,7 +44,6 @@
 Refer to the files below for more details:
 
 1. [1_topic_modeling_using_LDA.ipynb](1_topic_modeling_using_LDA.ipynb)
-2. [2_sentiment_analysis.ipynb](2_sentiment_analysis.ipynb)
 
 ## Lab Submission Instructions
 
