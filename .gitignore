@@ -208,5 +208,20 @@ __marimo__/
 /.idea
 
 roughwork/
-data/processed_scaled_down_reviews_with_topics_and_sentiments.csv
+
+/.idea
+.idea/dataSources.xml
+.idea/StoredRoutinesandViews.iml
+/.vscode
+/.venv
+
+/.cspell
+.cspell/custom-dictionary-workspace.txt
+
+/container-volumes/mysql/var-lib-mysql
+/container-volumes/mysql/var-log-mysql
+
+/container-volumes/postgresql/var-lib-postgresql-data
+/container-volumes/postgresql/var-log-postgresql
+
 mydatabase.db
