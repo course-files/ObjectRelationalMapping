@@ -13,7 +13,7 @@
 -- 5. payment: 14,809 payments
 -- 6. customerFeedback: 5,500 feedback entries
 
-SET search_path TO siwakadishes;
+SET search_path TO siwaka_dishes;
 
 -- Insert branches
 INSERT INTO branch (branchCode, phone, addressLine1, addressLine2, postalCode, county, subCounty) VALUES

@@ -1,4 +1,4 @@
-SET search_path TO siwakadishes;
+SET search_path TO siwaka_dishes;
 
 INSERT INTO orderdetail (orderNumber, productCode, quantityOrdered, priceEach) VALUES (159, 'P057', 2, 200.00);
 INSERT INTO orderdetail (orderNumber, productCode, quantityOrdered, priceEach) VALUES (159, 'P089', 2, 70.00);

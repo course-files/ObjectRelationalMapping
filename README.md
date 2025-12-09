@@ -43,7 +43,8 @@
 
 Refer to the files below for more details:
 
-1. [1_topic_modeling_using_LDA.ipynb](1_topic_modeling_using_LDA.ipynb)
+1. [sql_alchemy_core_part1.ipynb](sql_alchemy_core_part1.ipynb)
+2. [sql_alchemy_core_part2.ipynb](sql_alchemy_core_part2.ipynb)
 
 ## Lab Submission Instructions
 

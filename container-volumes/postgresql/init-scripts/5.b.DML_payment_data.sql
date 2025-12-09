@@ -1,4 +1,4 @@
-SET search_path TO siwakadishes;
+SET search_path TO siwaka_dishes;
 
 INSERT INTO payment (orderNumber, paymentMethodID, amount, paymentDate) VALUES (1, 6, 32.33, '2023-04-03 12:53:17');
 INSERT INTO payment (orderNumber, paymentMethodID, amount, paymentDate) VALUES (1, 8, 70.39, '2024-01-05 02:16:42');

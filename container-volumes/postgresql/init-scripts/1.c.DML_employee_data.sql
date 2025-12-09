@@ -1,4 +1,4 @@
-SET search_path TO siwakadishes;
+SET search_path TO siwaka_dishes;
 
 INSERT INTO employee (employeeNumber, firstName, lastName, email, branchCode, jobTitle) VALUES (1, 'Hawa', 'Mbeki', 'hmbeki71@siwakadishes.co.ke', 9, 'Host');
 INSERT INTO employee (employeeNumber, firstName, lastName, email, branchCode, jobTitle) VALUES (2, 'Claude', 'Mohammed', 'cmohammed18@siwakadishes.co.ke', 7, 'Waitress');

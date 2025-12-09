@@ -1,4 +1,4 @@
-SET search_path TO siwakadishes;
+SET search_path TO siwaka_dishes;
 
 INSERT INTO customerorder (orderDate, requiredDate, dispatchDate, orderStatusID, customerNumber, branchCode) VALUES ('2023-01-09 14:32:58', '2023-01-11 03:51:27', '2023-01-10 08:45:02', 3, 16, 12);
 INSERT INTO customerorder (orderDate, requiredDate, dispatchDate, orderStatusID, customerNumber, branchCode) VALUES ('2022-01-21 11:58:36', '2022-01-22 01:23:39', '2022-01-23 08:54:21', 2, 625, 14);

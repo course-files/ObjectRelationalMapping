@@ -1,4 +1,4 @@
-SET search_path TO siwakadishes;
+SET search_path TO siwaka_dishes;
 
 INSERT INTO customer (customerName, contactFirstName, contactLastName, phone, addressLine1, addressLine2, postalCode, county, subCounty, status) VALUES ('Njeri Kagame', 'Njeri', 'Kagame', '0799604377', '494 Moi Ave', 'Apt 93', '47961', 'Mombasa', 'Jomvu', 1);
 INSERT INTO customer (customerName, contactFirstName, contactLastName, phone, addressLine1, addressLine2, postalCode, county, subCounty, status) VALUES ('Felicite Zuma', 'Felicite', 'Zuma', '0715929390', '606 Moi Ave', 'Apt 78', '6127', 'Garissa', 'Subukia', 0);

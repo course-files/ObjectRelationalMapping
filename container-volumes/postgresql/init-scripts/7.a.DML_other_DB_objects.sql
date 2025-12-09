@@ -1,4 +1,4 @@
-SET search_path TO siwakadishes;
+SET search_path TO siwaka_dishes;
 
 -- First view
 -- This script creates a view named `view_payment_data` that consolidates payment information
