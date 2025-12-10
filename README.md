@@ -102,6 +102,7 @@ Refer to the files below for more details:
 1. [sql_alchemy_part1.ipynb](sql_alchemy_part1.ipynb)
 2. [sql_alchemy_part2.ipynb](sql_alchemy_part2.ipynb)
 3. [sql_alchemy_part3.ipynb](sql_alchemy_part3.ipynb)
+4. [sql_alchemy_part4.ipynb](sql_alchemy_part4.ipynb)
 
 ## Lab Submission Instructions
 
