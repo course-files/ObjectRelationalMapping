@@ -11,13 +11,15 @@
 
 ## Overall Architecture
 
-This lab focuses on the ORM and the database only. See [https://github.com/course-files/ServingMLModels](https://github.com/course-files/ServingMLModels) for a lab that focuses on the backend.
+See [https://github.com/course-files/ServingMLModels](https://github.com/course-files/ServingMLModels) for more information on setting up
+a reverse proxy (Nginx) server and a WSGI (Gunicorn) server for a production-ready deployment.
 
 ![img.png](assets/images/OverallArchitecture.png)
 
 ## Repository Structure
 
 ```text
+$ tree -I ".venv|__pycache__|roughwork|lab_submission_ANSWERS|.cspell|.idea|var-lib-mysql|var-log-mysql|var-lib-postgresql-data|var-log-postgresql|data|mydatabase.db"
 .
 ├── Docker-Compose.yaml
 ├── LICENSE
@@ -29,6 +31,7 @@ This lab focuses on the ORM and the database only. See [https://github.com/cours
 │       ├── 2_CreateTableConfirmation.png
 │       ├── 3_Insert_Confirmation.png
 │       ├── 4_Automatic-vs-Manual-Transmission.png
+│       ├── OverallArchitecture.png
 │       ├── activate_venv_pycharm.png
 │       ├── activate_venv_vscode.png
 │       └── pexels-antonio-filigno-159809-8538296.jpg
@@ -75,7 +78,6 @@ This lab focuses on the ORM and the database only. See [https://github.com/cours
 │           ├── classicmodels.sql
 │           ├── dreamhome.png
 │           └── dreamhome.sql
-├── data
 ├── images
 │   └── mysql
 │       └── Dockerfile
@@ -83,12 +85,21 @@ This lab focuses on the ORM and the database only. See [https://github.com/cours
 ├── model
 ├── queries
 ├── requirements.txt
+├── sample_app
+│   ├── app.py
+│   ├── db.py
+│   ├── frontend
+│   │   └── process_order.html
+│   ├── models.py
+│   └── services.py
 ├── setup_instructions.md
 ├── sql_alchemy_part1.ipynb
 ├── sql_alchemy_part2.ipynb
-└── sql_alchemy_part3.ipynb
+├── sql_alchemy_part3.ipynb
+└── sql_alchemy_part4.ipynb
 
-16 directories, 53 files
+17 directories, 60 files
+
 ```
 
 ## Setup Instructions
@@ -103,6 +114,19 @@ Refer to the files below for more details:
 2. [sql_alchemy_part2.ipynb](sql_alchemy_part2.ipynb)
 3. [sql_alchemy_part3.ipynb](sql_alchemy_part3.ipynb)
 4. [sql_alchemy_part4.ipynb](sql_alchemy_part4.ipynb)
+
+5. [services.py](sample_application/backend/services.py): **This is the backend**. It implements the business rules and transaction logic.
+6. [db.py](sample_application/backend/db.py): This forms **part of the ORM layer**. It specifies how to connect to the database.
+7. [models.py](sample_application/backend/models.py): This forms **part of the ORM layer**. It defines the database schema and maps Python objects to database tables.
+8. [app.py](sample_application/backend/app.py): This **exposes the backend** to the outside world through API endpoints.
+
+By separating `services.py` from `db.py` + `models.py`, you get:
+
+- Reusable business logic independent of the database.
+- A clear layer for testing: you can unit-test the backend logic without involving a specific database system.
+- A clear ORM layer that can be swapped out for another database without rewriting your service logic.
+
+This is classic, traditional layering, which scales far better than putting everything in one file and creating _"spaghetti code"_ that is challenging to maintain.
 
 ## Lab Submission Instructions
 
