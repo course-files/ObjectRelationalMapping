@@ -225,3 +225,4 @@ roughwork/
 /container-volumes/postgresql/var-log-postgresql
 
 mydatabase.db
+sample_application/backend/mydatabase.db
