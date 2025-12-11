@@ -19,7 +19,6 @@ a reverse proxy (Nginx) server and a WSGI (Gunicorn) server for a production-rea
 ## Repository Structure
 
 ```text
-$ tree -I ".venv|__pycache__|roughwork|lab_submission_ANSWERS|.cspell|.idea|var-lib-mysql|var-log-mysql|var-lib-postgresql-data|var-log-postgresql|data|mydatabase.db"
 .
 ├── Docker-Compose.yaml
 ├── LICENSE
@@ -85,21 +84,21 @@ $ tree -I ".venv|__pycache__|roughwork|lab_submission_ANSWERS|.cspell|.idea|var-
 ├── model
 ├── queries
 ├── requirements.txt
-├── sample_app
-│   ├── app.py
-│   ├── db.py
-│   ├── frontend
-│   │   └── process_order.html
-│   ├── models.py
-│   └── services.py
+├── sample_application
+│   ├── backend
+│   │   ├── app.py
+│   │   ├── db.py
+│   │   ├── models.py
+│   │   └── services.py
+│   └── frontend
+│       └── process_order.html
 ├── setup_instructions.md
 ├── sql_alchemy_part1.ipynb
 ├── sql_alchemy_part2.ipynb
 ├── sql_alchemy_part3.ipynb
 └── sql_alchemy_part4.ipynb
 
-17 directories, 60 files
-
+18 directories, 60 files
 ```
 
 ## Setup Instructions
