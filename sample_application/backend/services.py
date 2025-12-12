@@ -6,16 +6,20 @@ Responsibilities:
 - Validates data from the frontend before persisting it.
 - Handles exceptions, savepoints, and rollbacks during transaction processing.
 
-* It should be completely decoupled from the HTTP or UI frameworks.
-* It can run on the application server which has Python installed.
+* It should be completely decoupled from the frontend. There should be an API between the frontend and the backend.
+* It can run on the application server (which has Python installed) to serve as the backend.
 
 Takeaway: This is your core backend, the part of the system that actually does the work.
 """
 from datetime import datetime, timedelta
+import sqlalchemy
 from sqlalchemy import exc
 from sqlalchemy.orm import Session
-from models import Order, OrderItem, CustomerOrder, OrderDetail, Product, Payment, Customer, Branch, OrderStatus, PaymentMethod
+from models import *
 
+from collections import Counter
+from typing import List, Dict
+from decimal import Decimal
 
 def create_order_with_items(session: Session, customer: str, items: list):
     """
@@ -48,183 +52,237 @@ def create_order_with_items(session: Session, customer: str, items: list):
         session.commit()  # Commit entire transaction
         return {"message": "Order created successfully", "order_id": order.id}
 
-    except Exception as e:
+    except sqlalchemy.exc.SQLAlchemyError as e:
         session.rollback()  # Full rollback
         return {"error": str(e)}
 
-
 def create_customer_order_with_products(
-        session: Session,
-        customer_number: int,
-        branch_code: int,
-        order_status_id: int,
-        payment_method_id: int,
-        items: list
-):
+    session: Session,
+    customer_number: int,
+    branch_code: int,
+    order_status_id: int,
+    payment_method_id: int,
+    items: List[Dict]
+) -> Dict:
     """
-    Creates a customer order with multiple products, implementing savepoints after each order line item.
+    Create a customer order for multiple products.
 
-    items is a list of dictionaries:
-    [ {"product_code": "P001", "quantity_ordered": 2}, {"product_code": "P018", "quantity_ordered": 5} ]
+    Strategy:
+    1. Aggregate requested quantities by product_code.
+    2. Start a single transaction.
+    3. Lock the corresponding product rows (SELECT ... FOR UPDATE).
+    4. Partition items into accepted and rejected (missing or insufficient stock).
+    5. If there are accepted items, insert the order header, order details, update stock,
+       insert payment, and commit the transaction.
+    6. Return a structured result containing accepted/rejected items and a receipt for accepted items.
 
-    Business rule: You cannot sell what you do not have (stock validation).
-    If a product has insufficient stock, rollback to the previous savepoint and continue with other products.
+    The products are provided as a list of dictionaries
+        [
+            {
+              "product_code": "P001",
+              "quantity_ordered": 2
+            },
+            {
+              "product_code": "P018",
+              "quantity_ordered": 5
+            },
+            {
+              "product_code": "P072",
+              "quantity_ordered": 1
+            },
+            {
+              "product_code": "P038",
+              "quantity_ordered": 70
+            }
+        ]
     """
+
+    # Aggregate Duplicates in the Payload:
+    # Analogy: A supermarket teller scans the same packet of milk 5 times
+    #          to represent the fact that you have bought 5 packets.
+
+    # This aggregates the total quantity requested for each product code.
+    # It adds the current item's quantity (`qty`) to the existing value in the
+    # `requested` dictionary for the given product's `code`.
+    #
+    # It initializes the value to `0` (since `Counter()` returns `0` for missing keys)
+    # and then adds the quantity. This ensures that if the same product code appears
+    # multiple times in the input, their quantities are summed up.
+    requested = Counter()
+    original_item_order = []  # We use this to maintain the original item order for reporting purposes (e.g., in a receipt)
+    for it in items:
+        code = it.get("product_code")
+        qty = int(it.get("quantity_ordered", 0)) if it.get("quantity_ordered") is not None else 0
+        if not code or qty <= 0:
+            # skip invalid items early (avoid over-processing); report them as rejected later
+            original_item_order.append((code, qty))
+            continue
+        requested[code] = int(requested[code]) + int(qty)
+        original_item_order.append((code, qty))
+
+    if not requested:
+        return {"error": "No valid items requested", "accepted": [], "rejected": list(original_item_order)}
 
     try:
-        # We start the transaction here
-        order_date = datetime.now()
-        required_date = order_date + timedelta(minutes=30)
-        dispatch_date = order_date + timedelta(minutes=20)
+        # Begin an explicit transaction scope. This will commit on success, rollback on exception.
+        with session.begin():
 
-        # Create a new order for the specific customer
-        customer_order = CustomerOrder(
-            orderDate=order_date,
-            requiredDate=required_date,
-            dispatchDate=dispatch_date,
-            orderStatusID=order_status_id,
-            customerNumber=customer_number,
-            branchCode=branch_code
-        )
-        session.add(customer_order)
-        session.flush()  # Obtain the new order_number without committing
+            products = (
+                session.query(Product)
+                .filter(Product.productCode.in_(list(requested.keys())))
+                .with_for_update()  # This locks the corresponding product rows for the duration of the transaction
+                .all()
+            )
 
-        order_number = customer_order.orderNumber
+            products_map = {p.productCode: p for p in products}
 
-        # Initialize the total amount to be paid for the order
-        total_amount = 0.0
+            accepted: Dict[str, int] = {}   # A dictionary presenting product_code -> qty accepted
+            rejected: Dict[str, str] = {}   # A dictionary presenting product_code -> reason
 
-        # List to store savepoints
-        savepoints = []
-        processed_products = []
+            # Validate stock for each requested product (based on aggregated quantity)
+            # This is where the backend implements the business logic based on the business rules.
+            # It provides more flexibility to define the procedure to follow (using a procedural language like Python)
+            # than if you were to use SQL, which is declarative.
 
-        # Process each product using a unique savepoint
-        for idx, item in enumerate(items):
-            product_code = item["product_code"]
-            quantity_ordered = item["quantity_ordered"]
-
-            # Create a savepoint before processing this product
-            savepoint = session.begin_nested()
-            savepoint_name = f"sp{idx + 1}"
-
-            try:
-                # Query product to get price and stock
-                product = session.query(Product).filter_by(productCode=product_code).first()
-
-                if not product:
-                    # If the product has not been found, then roll back this item
-                    savepoint.rollback()
+            for product_code, qty_requested in requested.items():
+                product = products_map.get(product_code)
+                # Document the reasons for rejection.
+                if product is None:
+                    rejected[product_code] = "Product not found"
                     continue
+
+                if qty_requested <= 0:
+                    rejected[product_code] = "Invalid quantity"
+                    continue
+
+                if qty_requested > product.quantityInStock:
+                    rejected[product_code] = f"Insufficient stock (requested {qty_requested}, available {product.quantityInStock})"
+                    continue
+
+                # Accept the aggregated request
+                accepted[product_code] = qty_requested
+
+            # If nothing is accepted, then do not create an empty order; return the list of rejected products
+            if not accepted:
+                # The session will roll back the 'with-block' automatically (no changes made), but we return a friendly structure for other backend/frontend developers.
+                return {"message": "No items accepted", "accepted": {}, "rejected": rejected}
+
+            # We create the order header first. This will help us to get the order_number.
+            order_date = datetime.now()
+
+            # These can be customized to request the teller to specify when the client expects the order
+            # to be delivered and when the business should dispatch it for delivery.
+            # For now, the default is set to "required after 30 minutes and dispatched after 20 minutes".
+            required_date = order_date + timedelta(minutes=30)
+            dispatch_date = order_date + timedelta(minutes=20)
+
+            customer_order = CustomerOrder(
+                orderDate=order_date,
+                requiredDate=required_date,
+                dispatchDate=dispatch_date,
+                orderStatusID=order_status_id,
+                customerNumber=customer_number,
+                branchCode=branch_code
+            )
+            session.add(customer_order)
+            session.flush()  # Obtain customer_order.orderNumber without the need to commit the transaction first
+
+            order_number = customer_order.orderNumber
+
+            # Create order detail rows and update the stock
+            overall_total = 0.0
+            created_order_details = []
+
+            for product_code, qty in accepted.items():
+                product = products_map[product_code]
 
                 price = product.sellingPrice
-                quantity_in_stock = product.quantityInStock
+                line_total = price * qty
+                overall_total = Decimal(overall_total) + Decimal(line_total)
 
-                # Validate stock availability (according to the business rule or Standard Operating Procedure)
-                if quantity_in_stock < quantity_ordered:
-                    # There is insufficient stock, therefore, roll back to the previous savepoint
-                    savepoint.rollback()
-                    continue
-
-                # Insert the order detail iff the product was found and the quantity in stock is enough to meet the demand
                 order_detail = OrderDetail(
                     orderNumber=order_number,
                     productCode=product_code,
-                    quantityOrdered=quantity_ordered,
+                    quantityOrdered=qty,
                     priceEach=price
                 )
                 session.add(order_detail)
+                created_order_details.append(order_detail)
 
-                # Update the inventory to reflect the quantity that has been sold
-                product.quantityInStock = product.quantityInStock - quantity_ordered
+                # Update the inventory by reducing the amount of stock remaining based on the quantity purchased
+                product.quantityInStock = product.quantityInStock - qty
 
-                # Calculate the total amount the client has to pay for this order
-                line_total = quantity_ordered * price
-                total_amount += line_total
-
-                # Store savepoint and product info
-                savepoints.append((savepoint_name, savepoint))
-                processed_products.append(product_code)
-
-            except Exception as item_error:
-                # If any error occurs with this item, rollback to the most recent savepoint
-                savepoint.rollback()
-                continue
-
-        # Insert payment for the order
-        payment = Payment(
-            orderNumber=order_number,
-            paymentDate=datetime.now(),
-            amount=total_amount,
-            paymentMethodID=payment_method_id
-        )
-        session.add(payment)
-
-        # Generate receipt (query order details)
-        receipt_query = (
-            session.query(
-                CustomerOrder.orderNumber,
-                CustomerOrder.orderDate,
-                Customer.customerName,
-                Customer.contactFirstName,
-                Customer.contactLastName,
-                Branch.addressLine1,
-                Branch.addressLine2,
-                Branch.subCounty,
-                Branch.county,
-                Product.productCode,
-                Product.productName,
-                OrderDetail.priceEach,
-                OrderDetail.quantityOrdered,
-                OrderStatus.status
+            # Assumption: The client paid in full.
+            # Insert payment record for the accepted items total
+            payment = Payment(
+                orderNumber=order_number,
+                paymentDate=datetime.now(),
+                amount=round(overall_total, 2),
+                paymentMethodID=payment_method_id
             )
-            .join(Customer, CustomerOrder.customerNumber == Customer.customerNumber)
-            .join(Branch, CustomerOrder.branchCode == Branch.branchCode)
-            .join(OrderDetail, CustomerOrder.orderNumber == OrderDetail.orderNumber)
-            .join(Product, OrderDetail.productCode == Product.productCode)
-            .join(OrderStatus, CustomerOrder.orderStatusID == OrderStatus.orderStatusID)
-            .filter(CustomerOrder.orderNumber == order_number)
-            .order_by(OrderDetail.productCode)
-            .all()
-        )
+            session.add(payment)
+            session.commit()
 
-        # Construct the receipt
+        # After commit, build a receipt from the created objects (we use what is available in this session instead of reading again)
         receipt = {
             "order_number": order_number,
-            "order_date": None,
-            "customer_name": None,
-            "contact_person": None,
-            "branch": None,
-            "order_status": None,
-            "overall_total": round(total_amount, 2),
+            "order_date": order_date.strftime("%Y-%m-%d %H:%M:%S"),
+            "customer_number": customer_number,
+            "branch_code": branch_code,
+            "order_status_id": order_status_id,
+            "overall_total": round(overall_total, 2),
             "items": []
         }
 
-        for row in receipt_query:
-            if receipt["order_date"] is None:
-                receipt["order_date"] = row.orderDate.strftime("%Y-%m-%d %H:%M:%S")
-                receipt["customer_name"] = row.customerName
-                receipt["contact_person"] = f"{row.contactFirstName} {row.contactLastName}"
-                receipt["branch"] = f"{row.addressLine1}, {row.addressLine2}, {row.subCounty}, {row.county}"
-                receipt["order_status"] = row.status
-
-            line_total = row.priceEach * row.quantityOrdered
+        # Populate items for the receipt
+        for od in created_order_details:
             receipt["items"].append({
-                "product_code": row.productCode,
-                "product_name": row.productName,
-                "unit_price": float(row.priceEach),
-                "quantity": row.quantityOrdered,
-                "line_total": float(line_total)
+                "product_code": od.productCode,
+                "quantity": od.quantityOrdered,
+                "unit_price": float(od.priceEach),
+                "line_total": round(float(od.priceEach) * od.quantityOrdered, 2)
             })
-
-        # Commit entire transaction
-        session.commit()
 
         return {
             "message": "Order created successfully",
             "order_number": order_number,
+            "accepted": accepted,
+            "rejected": rejected,
             "receipt": receipt
         }
 
-    except Exception as e:
-        session.rollback()  # Full rollback
+    except Exception as exc:
+        # Full rollback already handled by session.begin() context manager.
+        # Provide an informative error for the caller and log as needed upstream.
+        session.rollback()
+        return {"error": "Failed to create order", "details": str(exc)}
+
+def get_selling_price_by_product_code(session: Session, product_code: str):
+    """
+    Retrieve the selling price for a given product code.
+
+    Returns:
+      - {"product_code": "...", "selling_price": 123.45} if found
+      - {"error": "..."} if not found / invalid input / unexpected error
+    """
+    try:
+        code = (product_code or "").strip()
+        if not code:
+            return {"error": "product_code is required"}
+
+        product = (
+            session.query(Product.productCode, Product.sellingPrice)
+            .filter(Product.productCode == code)
+            .first()
+        )
+
+        if not product:
+            return {"error": f"Product not found for product_code={code}"}
+
+        return {
+            "product_code": product.productCode,
+            "selling_price": float(product.sellingPrice)
+        }
+
+    except sqlalchemy.exc.SQLAlchemyError as e:
         return {"error": str(e)}
