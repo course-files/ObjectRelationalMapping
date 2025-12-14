@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>Customer Order Transaction (ORM Demo)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 24px;
+            max-width: 980px;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+        }
+
+        .muted {
+            color: #666;
+            margin-top: 0;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        label {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            align-items: end;
+            margin-bottom: 10px;
+        }
+
+        .row > div {
+            flex: 1;
+        }
+
+        .row .small {
+            flex: 0.6;
+        }
+
+        .row .tiny {
+            flex: 0.35;
+        }
+
+        button {
+            padding: 10px 14px;
+            border: 0;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .btn {
+            background: #2563eb;
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: #111827;
+            color: #fff;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: #fff;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            border-bottom: 1px solid #eee;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background: #f8fafc;
+        }
+
+        pre {
+            background: #0b1020;
+            color: #e5e7eb;
+            padding: 12px;
+            border-radius: 10px;
+            overflow: auto;
+        }
+
+        .right {
+            text-align: right;
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: #eef2ff;
+            color: #3730a3;
+            font-weight: 600;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #7f1d1d;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .ok {
+            background: #dcfce7;
+            color: #14532d;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        #totalFromReceipt {
+            background: #f8fafc;
+            pointer-events: none;
+        }
+
+        .price-pill {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #f1f5f9;
+            color: #0f172a;
+            font-weight: 700;
+            min-width: 92px;
+            text-align: right;
+        }
+
+        .price-pill.missing {
+            background: #fff7ed;
+            color: #9a3412;
+            font-weight: 700;
+        }
+
+        .payload-section {
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            padding: 12px;
+            margin: 16px 0;
+        }
+    </style>
+</head>
+
+<body>
+<h1>Customer Order Transaction (ORM Demo)</h1>
+<p class="muted">
+    Demonstrates a single transaction with savepoints per line item (stock validation), then payment + receipt.
+</p>
+
+<div class="card">
+    <h2>1) Order Details</h2>
+    <div class="grid">
+        <div>
+            <label for="customerNumber">Customer Number</label>
+            <input id="customerNumber" type="number" min="1" value="621" required/>
+        </div>
+        <div>
+            <label for="branchCode">Branch Code</label>
+            <input id="branchCode" type="number" min="1" value="5" required/>
+        </div>
+        <div>
+            <label for="orderStatusId">Order Status ID</label>
+            <input id="orderStatusId" type="number" min="1" value="4" required/>
+        </div>
+        <div>
+            <label for="paymentMethodId">Payment Method ID</label>
+            <input id="paymentMethodId" type="number" min="1" value="1" required/>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>2) Order Items</h2>
+
+    <div id="itemsContainer"></div>
+
+    <button class="btn" type="button" onclick="addItemRow()">Add Item</button>
+    <button class="btn-secondary" type="button" onclick="addExampleItems()">Add Example Items</button>
+
+    <p class="muted" style="margin-top: 10px;">
+        Business rule reminder: If the stock is not enough (or the product does not exist), then the backend rolls back
+        only that item (using a savepoint) and continues.
+    </p>
+</div>
+
+<div class="card">
+    <h2>3) Payment</h2>
+
+    <div class="grid">
+        <div>
+            <label for="amountPaid">Amount Paid (Cash Tendered)</label>
+            <input id="amountPaid" type="number" min="0" step="50.00" value="0.00"/>
+        </div>
+        <div>
+            <label>Total Computed</label>
+            <input id="totalFromReceipt" type="text" value="0.00" readonly tabindex="-1"/>
+        </div>
+        <div>
+            <label>Change</label>
+            <input id="change" type="text" value="0.00" readonly/>
+        </div>
+        <div>
+            <label>Backend API URL</label>
+            <input id="apiUrl" type="text" value="http://127.0.0.1:5000/api/meal_order_transaction"/>
+        </div>
+    </div>
+
+    <div style="margin-top: 12px;">
+        <button class="btn" id="submitBtn" type="button" onclick="submitOrder()">Submit Transaction</button>
+    </div>
+</div>
+
+<div class="card" id="payloadCard" style="display: none;">
+    <h2>Payload Sent to API</h2>
+    <div class="payload-section">
+        <pre id="payloadDisplay">{}</pre>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Receipt</h2>
+    <div id="statusBox"></div>
+    <div id="receiptBox"></div>
+
+    <h3>Raw Response</h3>
+    <pre id="rawResponse">{}</pre>
+</div>
+
+<script>
+    function money(n) {
+        const x = Number(n || 0);
+        return x.toFixed(2);
+    }
+
+    function getApiBaseUrl() {
+        // Use whatever is in the API URL box, but only keep scheme+host+port
+        // Example: http://127.0.0.1:5000/api/meal_order_transaction -> http://127.0.0.1:5000
+        const apiUrl = document.getElementById("apiUrl").value.trim();
+        try {
+            const u = new URL(apiUrl);
+            return `${u.protocol}//${u.host}`;
+        } catch (e) {
+            // Fallback: assume same origin as the page
+            return window.location.origin;
+        }
+    }
+
+    function recalcTotalsFromItems() {
+        const container = document.getElementById("itemsContainer");
+        const rows = Array.from(container.querySelectorAll(".row"));
+
+        let total = 0;
+
+        for (const row of rows) {
+            const qty = Number(row.querySelector(".quantityOrdered")?.value || 0);
+            const price = Number(row.dataset.sellingPrice || 0);
+            if (qty > 0 && price > 0) {
+                total += qty * price;
+            }
+        }
+
+        document.getElementById("totalFromReceipt").value = money(total);
+        recalcChange();
+    }
+
+    function recalcChange() {
+        const total = Number(document.getElementById("totalFromReceipt").value || 0);
+        const paid = Number(document.getElementById("amountPaid").value || 0);
+        document.getElementById("change").value = money(paid - total);
+    }
+
+    document.getElementById("amountPaid").addEventListener("input", recalcChange);
+
+    async function fetchAndSetSellingPrice(row) {
+        const input = row.querySelector(".productCode");
+        const priceEl = row.querySelector(".sellingPriceDisplay");
+
+        const code = (input.value || "").trim();
+        row.dataset.sellingPrice = "0";
+        priceEl.textContent = "—";
+        priceEl.classList.add("missing");
+
+        if (!code) {
+            recalcTotalsFromItems();
+            return;
+        }
+
+        // Guard against race conditions if user types fast
+        const requestId = String(Date.now());
+        row.dataset.priceRequestId = requestId;
+
+        const baseUrl = getApiBaseUrl();
+        const url = `${baseUrl}/api/products/${encodeURIComponent(code)}/selling-price`;
+
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+
+            // Ignore stale responses
+            if (row.dataset.priceRequestId !== requestId) return;
+
+            if (!res.ok || data.error) {
+                row.dataset.sellingPrice = "0";
+                priceEl.textContent = "N/A";
+                priceEl.classList.add("missing");
+                recalcTotalsFromItems();
+                return;
+            }
+
+            const price = Number(data.selling_price || 0);
+            row.dataset.sellingPrice = String(price);
+            priceEl.textContent = money(price);
+            priceEl.classList.remove("missing");
+            recalcTotalsFromItems();
+
+        } catch (e) {
+            if (row.dataset.priceRequestId !== requestId) return;
+            row.dataset.sellingPrice = "0";
+            priceEl.textContent = "Err";
+            priceEl.classList.add("missing");
+            recalcTotalsFromItems();
+        }
+    }
+
+    function addItemRow(productCode = "", qty = 1) {
+        const container = document.getElementById("itemsContainer");
+
+        const row = document.createElement("div");
+        row.className = "row";
+        row.dataset.sellingPrice = "0";
+
+        row.innerHTML = `
+            <div>
+              <label>Product Code</label>
+              <input class="productCode" type="text" placeholder="e.g., P001" value="${productCode}" required />
+            </div>
+            <div class="small">
+              <label>Quantity</label>
+              <input class="quantityOrdered" type="number" min="1" step="1" value="${qty}" required />
+            </div>
+            <div class="small">
+              <label>Selling Price</label>
+              <div class="price-pill missing sellingPriceDisplay" title="Fetched from /api/products/<code>/selling-price">—</div>
+            </div>
+            <div class="tiny">
+              <button class="btn-danger" type="button">Remove</button>
+            </div>
+        `;
+
+        const productInput = row.querySelector(".productCode");
+        const qtyInput = row.querySelector(".quantityOrdered");
+        const removeBtn = row.querySelector("button");
+
+        // Fetch price when user finishes editing product code
+        productInput.addEventListener("blur", () => fetchAndSetSellingPrice(row));
+        productInput.addEventListener("change", () => fetchAndSetSellingPrice(row));
+
+        // Recompute totals when quantity changes
+        qtyInput.addEventListener("input", recalcTotalsFromItems);
+        qtyInput.addEventListener("change", recalcTotalsFromItems);
+
+        // Remove row + recalc totals
+        removeBtn.addEventListener("click", () => {
+            row.remove();
+            recalcTotalsFromItems();
+        });
+
+        container.appendChild(row);
+
+        // If we pre-filled a code (example items), fetch immediately
+        if ((productCode || "").trim()) {
+            fetchAndSetSellingPrice(row);
+        } else {
+            recalcTotalsFromItems();
+        }
+    }
+
+    function addExampleItems() {
+        addItemRow("P001", 2);
+        addItemRow("P018", 5);
+        addItemRow("P072", 1);
+        addItemRow("P038", 70);
+    }
+
+    // Start with one row
+    addItemRow("", 1);
+
+    function buildPayload() {
+        const customer_number = parseInt(document.getElementById("customerNumber").value, 10);
+        const branch_code = parseInt(document.getElementById("branchCode").value, 10);
+        const order_status_id = parseInt(document.getElementById("orderStatusId").value, 10);
+        const payment_method_id = parseInt(document.getElementById("paymentMethodId").value, 10);
+
+        const container = document.getElementById("itemsContainer");
+        const rows = Array.from(container.querySelectorAll(".row"));
+
+        const items = rows
+            .map(row => {
+                const codeInput = row.querySelector(".productCode");
+                const qtyInput = row.querySelector(".quantityOrdered");
+                const code = (codeInput?.value || "").trim();
+                const qty = parseInt(qtyInput?.value, 10);
+                return {product_code: code, quantity_ordered: qty};
+            })
+            .filter(x => x.product_code.length > 0 && !isNaN(x.quantity_ordered));
+
+        return {customer_number, branch_code, order_status_id, payment_method_id, items};
+    }
+
+    function setStatus(kind, text) {
+        const box = document.getElementById("statusBox");
+        if (!text) {
+            box.innerHTML = "";
+            return;
+        }
+        box.innerHTML = `<div class="${kind === "error" ? "error" : "ok"}">${text}</div>`;
+    }
+
+    function renderReceipt(receipt) {
+        if (!receipt) {
+            document.getElementById("receiptBox").innerHTML = "";
+            return;
+        }
+
+        const header = `
+            <p>
+              <span class="pill">Order #${receipt.order_number}</span>
+              &nbsp; <strong>Date:</strong> ${receipt.order_date || "-"}
+            </p>
+            <p>
+              <strong>Branch Code:</strong> ${receipt.branch_code || "-"}
+              &nbsp; | &nbsp; <strong>Customer Number:</strong> ${receipt.customer_number || "-"}
+            </p>
+            <p>
+              <strong>Order Status ID:</strong> ${receipt.order_status_id || "-"}
+            </p>
+        `;
+
+        const rows = (receipt.items || []).map(it => `
+            <tr>
+              <td>${it.product_code}</td>
+              <td class="right">${money(it.unit_price)}</td>
+              <td class="right">${it.quantity}</td>
+              <td class="right">${money(it.line_total)}</td>
+            </tr>
+        `).join("");
+
+        const table = `
+            <table>
+              <thead>
+                <tr>
+                  <th>Product Code</th>
+                  <th class="right">Unit Price</th>
+                  <th class="right">Qty</th>
+                  <th class="right">Line Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows || `<tr><td colspan="4">No items processed (all failed validation / stock / missing product).</td></tr>`}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th colspan="3" class="right">Overall Total</th>
+                  <th class="right">${money(receipt.overall_total)}</th>
+                </tr>
+              </tfoot>
+            </table>
+        `;
+
+        document.getElementById("receiptBox").innerHTML = header + table;
+    }
+
+    async function submitOrder() {
+        setStatus(null, "");
+        document.getElementById("receiptBox").innerHTML = "";
+        document.getElementById("rawResponse").textContent = "{}";
+        document.getElementById("payloadCard").style.display = "none";
+
+        // Ensure totals are up-to-date before sending
+        recalcTotalsFromItems();
+
+        const payload = buildPayload();
+        if (!payload.items.length) {
+            setStatus("error", "Please add at least one valid item (product code + quantity).");
+            return;
+        }
+
+        // Display the payload that will be sent
+        document.getElementById("payloadDisplay").textContent = JSON.stringify(payload, null, 2);
+        document.getElementById("payloadCard").style.display = "block";
+
+        const apiUrl = document.getElementById("apiUrl").value.trim();
+        const btn = document.getElementById("submitBtn");
+
+        btn.disabled = true;
+        btn.textContent = "Processing...";
+
+        try {
+            const res = await fetch(apiUrl, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            document.getElementById("rawResponse").textContent = JSON.stringify(data, null, 2);
+
+            if (!res.ok || data.error) {
+                setStatus("error", data.error || "Transaction failed.");
+                renderReceipt(null);
+                return;
+            }
+
+            setStatus("ok", `Success: ${data.message || "Order created"} (Order #${data.order_number})`);
+            renderReceipt(data.receipt);
+
+        } catch (e) {
+            setStatus("error", "Network/Server error while submitting the order. Check the backend is running + CORS is enabled.");
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "Submit Transaction";
+        }
+    }
+</script>
+</body>
+</html>
