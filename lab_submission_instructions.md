@@ -32,73 +32,53 @@
 | **Name:**                                                                                          |             |
 | **What part of the lab did you personally contribute to,** <br>**and what did you learn from it?** |             |
 
-**Member 4**
-
-| **Details**                                                                                        | **Comment** |
-|:---------------------------------------------------------------------------------------------------|:------------|
-| **Student ID:**                                                                                    |             |
-| **Name:**                                                                                          |             |
-| **What part of the lab did you personally contribute to,** <br>**and what did you learn from it?** |             |
-
-**Member 5**
-
-| **Details**                                                                                        | **Comment** |
-|:---------------------------------------------------------------------------------------------------|:------------|
-| **Student ID:**                                                                                    |             |
-| **Name:**                                                                                          |             |
-| **What part of the lab did you personally contribute to,** <br>**and what did you learn from it?** |             |
-
 ## Scenario
 
-Your client, a university, is seeking to enhance their qualitative analysis of
-student course evaluations collected from students. They have provided you
-with a dataset containing student course evaluation for two courses in the
-Business Intelligence Option. The two courses are:
-- BBT 4106: Business Intelligence I
-- BBT 4206: Business Intelligence II
+The management of the organization (Siwaka Dishes) has made a decision to allow
+customers to make purchases on credit. This means that the cash tendered does not have to be
+the full amount of the order. Customers can make a partial payment, and the remaining
+amount will be paid later.
 
-The client wants you to use Natural Language Processing (NLP) techniques to identify
-the key topics (themes) discussed in the course evaluations. They would also like to
-get the sentiments (positive, negative, neutral) of each theme in the course evaluation.
+1. Edit the frontend interface to accept the amount of cash tendered as input to be
+sent to the backend through the API endpoint (`/api/meal_order_transaction`).
+2. Edit the backend to accept the partial payment for the order through the same
+API endpoint, i.e., `/api/meal_order_transaction`, and then insert it into the
+`payment` table in the database system.
+3. Create an API endpoint that uses the ORM to `GET` all orders that have not been paid in full
+as well as the total amount of cash tendered, and the remaining balance.
+4. Using the MySQL database system, simulate the termination of `Transaction 2` that is waiting for `Transaction 1` to
+commit and release the write locks it has acquired.
+_**Hint:** Transaction 1 should be executed using
+the SQL code in [MySQL_SampleDatabaseTransaction_siwaka_dishes.sql](MySQL_SampleDatabaseTransaction_siwaka_dishes.sql) and Transaction 2 should be executed using the frontend in [meal_order_transaction.html](sample_application/frontend/meal_order_transaction.html)._
+5. Identify the transaction (`trx_id`) of `Transaction 1` which is unable to `COMMIT`.
+Re-attempt to execute `Transaction 2` after the simulation and, just before it is terminated automatically by the database system,
+KILL `Transaction 1` manually to allow `Transaction 2` to complete successfully.
 
-Lastly, the client would like an interface through which they can provide input in the
-form of new textual data (one student's textual evaluation at a time) and the output
-expected is:
-1. The topic (theme) that the new textual data is talking about.
-2. The sentiment (positive, negative, neutral) of the new textual data.
+Make use of the following code for `Step 4` and `Step 5`:
 
-Use one of the following to create a demo interface for your client:
-- Hugging Face Spaces using a Gradio App – [https://huggingface.co/spaces](https://huggingface.co/spaces)
-- Streamlit Community Cloud (Streamlit Sharing) using a Streamlit App – [https://share.streamlit.io](https://share.streamlit.io)
----
-## Dataset
+- To list all the running transactions:
+```sql
+SELECT * FROM information_schema.innodb_trx;
+```
 
-Use the course evaluation dataset provided in Google Classroom.
+- To identify the `Process ID` (`processlist_id`) of each running transaction:
+```sql
+SELECT t.trx_id, t.trx_mysql_thread_id AS processlist_id, p.USER, p.HOST, p.DB, p.COMMAND, p.TIME, p.STATE, p.INFO
+FROM information_schema.innodb_trx t
+JOIN information_schema.processlist p
+  ON t.trx_mysql_thread_id = p.ID;
+```
 
-## Interpretation and Recommendation
-
-Provide a brief interpretation of the results and a recommendation for the client.
-- Interpret what the discovered topics mean and why certain sentiments dominate
-- Provide recommendations based on your results. **Do not** recommend anything that is not supported by your results.
+- To terminate the process running the transaction that is not committing:
+```sql
+KILL <processlist_id>;
+```
 
 ## Video Demonstration
 
-Submit the link to a short video (not more than 4 minutes) demonstrating the topic modelling and the sentiment analysis.
-Also include (in the same video) the user interface hosted on hugging face or streamlit.
+Submit the link to a short video (not more than 4 minutes) demonstrating your lab submission.
 
 | **Key**                             | **Value** |
 |:------------------------------------|:----------|
 | **Link to the video:**              |           |
 | **Link to the hosted application:** |           |
-
-
-## Grading Approach
-
-| Component                            | Weight | Description                                                       |
-|:-------------------------------------|:-------|:------------------------------------------------------------------|
-| **Data Preprocessing & Analysis**    | 20%    | Cleaning, preprocessing, and justification of chosen methods.     |
-| **Topic Modelling**                  | 20%    | Correctness, interpretability, and coherence of topics.           |
-| **Sentiment Analysis**               | 20%    | Appropriate model choice and quality of sentiment classification. |
-| **Interface Design & Functionality** | 20%    | Usability, interactivity, and deployment success.                 |
-| **Interpretation & Recommendation**  | 10%    | Logical, evidence-based, and actionable insights.                 |
-| **Presentation (Video & Clarity)**   | 10%    | Clarity, professionalism, and demonstration of understanding.     |
