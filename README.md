@@ -22,6 +22,7 @@ a reverse proxy (Nginx) server and a WSGI (Gunicorn) server for a production-rea
 .
 ├── Docker-Compose.yaml
 ├── LICENSE
+├── MySQL_SampleDatabaseTransaction_siwaka_dishes.sql
 ├── README.md
 ├── RecommendedCitation.bib
 ├── assets
@@ -33,6 +34,7 @@ a reverse proxy (Nginx) server and a WSGI (Gunicorn) server for a production-rea
 │       ├── OverallArchitecture.png
 │       ├── activate_venv_pycharm.png
 │       ├── activate_venv_vscode.png
+│       ├── mysqldump.png
 │       └── pexels-antonio-filigno-159809-8538296.jpg
 ├── container-volumes
 │   ├── mysql
@@ -77,6 +79,7 @@ a reverse proxy (Nginx) server and a WSGI (Gunicorn) server for a production-rea
 │           ├── classicmodels.sql
 │           ├── dreamhome.png
 │           └── dreamhome.sql
+├── database_backup_and_recovery.md
 ├── images
 │   └── mysql
 │       └── Dockerfile
@@ -91,14 +94,16 @@ a reverse proxy (Nginx) server and a WSGI (Gunicorn) server for a production-rea
 │   │   ├── models.py
 │   │   └── services.py
 │   └── frontend
+│       ├── meal_order_transaction.html
 │       └── process_order.html
 ├── setup_instructions.md
 ├── sql_alchemy_part1.ipynb
 ├── sql_alchemy_part2.ipynb
 ├── sql_alchemy_part3.ipynb
-└── sql_alchemy_part4.ipynb
+├── sql_alchemy_part4.ipynb
+└── temporary
 
-18 directories, 60 files
+18 directories, 65 files
 ```
 
 ## Setup Instructions
@@ -113,11 +118,15 @@ Refer to the files below for more details:
 2. [sql_alchemy_part2.ipynb](sql_alchemy_part2.ipynb)
 3. [sql_alchemy_part3.ipynb](sql_alchemy_part3.ipynb)
 4. [sql_alchemy_part4.ipynb](sql_alchemy_part4.ipynb)
+5. [process_order.html](sample_application/frontend/process_order.html)
+6. [MySQL_SampleDatabaseTransaction_siwaka_dishes.sql](MySQL_SampleDatabaseTransaction_siwaka_dishes.sql)
 
-5. [services.py](sample_application/backend/services.py): **This is the backend**. It implements the business rules and transaction logic.
-6. [db.py](sample_application/backend/db.py): This forms **part of the ORM layer**. It specifies how to connect to the database.
-7. [models.py](sample_application/backend/models.py): This forms **part of the ORM layer**. It defines the database schema and maps Python objects to database tables.
-8. [app.py](sample_application/backend/app.py): This **exposes the backend** to the outside world through API endpoints.
+7. [services.py](sample_application/backend/services.py): **This is the backend**. It implements the business rules and transaction logic.
+8. [db.py](sample_application/backend/db.py): This forms **part of the ORM layer**. It specifies how to connect to the database.
+9. [models.py](sample_application/backend/models.py): This forms **part of the ORM layer**. It defines the database schema and maps Python objects to database tables.
+10. [app.py](sample_application/backend/app.py): This **exposes the backend** to the outside world through API endpoints.
+11. [meal_order_transaction.html](sample_application/frontend/meal_order_transaction.html): This is a sample frontend interface that interacts with the backend through the API endpoints.
+12. [database_backup_and_recovery.md](database_backup_and_recovery.md)
 
 By separating `services.py` from `db.py` + `models.py`, you get:
 
