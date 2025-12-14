@@ -1,8 +1,17 @@
 # Database Backup and Recovery
 
+| Key              | Value                                                                                                                                                                                                                                                                                            |
+|:-----------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Course Codes** | MIT 8107                                                                                                                                                                                                                                                                                         |
+| **Course Names** | MIT 8107: Advanced Database Systems (Week 1-3 of 13)                                                                                                                                                                                                                                             |
+| **Semester**     | May to July 2026                                                                                                                                                                                                                                                                                 |
+| **Lecturer**     | Allan Omondi                                                                                                                                                                                                                                                                                     |
+| **Contact**      | aomondi@strathmore.edu                                                                                                                                                                                                                                                                           |
+| **Note**         | The lecture contains both theory and practice.<br/>This notebook forms part of the practice.<br/>It is intended for educational purpose only.<br/>Recommended citation: [BibTex](https://raw.githubusercontent.com/course-files/ObjectRelationalMapping/refs/heads/main/RecommendedCitation.bib) |
+
 You did not merely “stop the server”; you interrupted InnoDB in the middle of its assigned processing task.
 
-When you brutally (not gracefully) stopped the server during an uncommitted transaction, you likely corrupted the InnoDB data dictionary or a foreign key metadata structure. The error log confirms this with the statement `Assertion failure: dict0dict.cc:3480:for_table || ref_table`.
+When you "brutally" (not gracefully) stopped the server during an uncommitted transaction, you likely corrupted the InnoDB data dictionary or a foreign key metadata structure. The error log confirms this with the statement `Assertion failure: dict0dict.cc:3480:for_table || ref_table`.
 
 This is not a warning. This is InnoDB deliberately crashing itself because it detected internal inconsistency in the data dictionary while trying to recover transactions and foreign key metadata.
 
