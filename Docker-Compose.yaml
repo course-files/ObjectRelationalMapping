@@ -34,7 +34,7 @@ services:
       dockerfile: Dockerfile
     hostname: mysql-8.0.40-debian
     container_name: mysql-8.0.40-debian
-    restart: always
+    restart: no
     ports:
       - 3307:3306
     environment:
@@ -45,7 +45,7 @@ services:
       # To store the server's log files in the host
       - mysql-log:/var/log/mysql/
       # To store the server's data persistently in the host
-      - mysql-data:/var/lib/mysql
+      - mysql-data:/var/lib/mysql/
       # To run the SQL scripts used to create the required databases
       - mysql-init:/docker-entrypoint-initdb.d/
     command: >
@@ -79,6 +79,71 @@ services:
       - postgres-init:/docker-entrypoint-initdb.d/
     command: postgres -c 'config_file=/etc/postgresql/postgresql.conf'
 
+  mysql_backup:
+    image: customized-mysql:1.0
+    build:
+      context: ./images/mysql
+      dockerfile: Dockerfile
+    hostname: mysql_backup
+    container_name: mysql_backup
+    # restart: no → The default. The container runs once. If it stops, then it stays stopped.
+    # restart: always → The container always runs, even after the host machine restarts.
+    # restart: on-failure → The container restarts only if it exists with a non-zero exit code.
+    # restart: on-failure:5 → The container restarts only if it exists with a non-zero exit code, but it is restarted up to a maximum of 5 times in a row.
+    # restart: unless-stopped → The container always restarts unless it is manually stopped.
+    restart: unless-stopped
+    depends_on:
+      - mysql-8.0.40-debian
+    volumes:
+      # To store the server's backups persistently in the host
+      - mysql-backup:/backup/mysql/
+      # Secret file containing the credentials to access the MySQL server
+      - mysql-secrets:/root/
+      # `sleep 30` (30 seconds) provides a startup delay to give the MySQL server time to start
+      # before the first backup is initiated.
+
+      # `sleep 10800` (3 hours) provides a periodic backup interval that repeats forever,
+      # as long as the container is running.
+      # ----------- We can change this to `sleep 120` for teaching purposes, i.e., perform the backups every 2 minutes.
+
+      # Retention Policy for the Backups (to avoid filling up the storage space):
+      # Best Practice: Retention policies should be enforced by the storage layer, not in a shell loop inside the container.
+
+      # `find /backup/mysql -type f -name '*.sql' -mtime +7 -print -delete >> $$LOG_FILE 2>&1;`
+      # ----------- We can change this to `find /backup/mysql -type f -name '*.sql' -mmin +2 -print -delete >> $$LOG_FILE 2>&1;` for files older than 2 minutes.
+        # -mtime +7 → finds files older than 7 days (assuming that you will not take more than 7 days to notice corrupted databases).
+        # -type f → finds only files, not directories.
+        # -name '*.sql' → only database dumps.
+        # -delete → simple, permanent deletion without any confirmation.
+        # -print → prints the names of the files that would be deleted (basic logging).
+        # $$LOG_FILE 2>&1; → Take errors and send them to the same place as the normal output.
+    command: >
+      /bin/bash -c "
+      LOG_FILE=/backup/mysql/backup.log;
+    
+      touch $$LOG_FILE &&
+      chmod 600 /root/.my.cnf &&
+      sleep 30 &&
+    
+      while true; do
+        echo \"[$(date '+%Y-%m-%d %H:%M:%S')] Backup started\" >> $$LOG_FILE;
+    
+        if mysqldump --all-databases --single-transaction --quick --lock-tables=false > /backup/mysql/full_dump_$(date +%Y%m%d_%H%M).sql; then
+    
+          echo \"[$(date '+%Y-%m-%d %H:%M:%S')] Backup completed successfully\" >> $$LOG_FILE;
+    
+          find /backup/mysql -type f -name '*.sql' -mtime +7 -print -delete >> $$LOG_FILE 2>&1;
+    
+          echo \"[$(date '+%Y-%m-%d %H:%M:%S')] Backup retention policy enforced\" >> $$LOG_FILE;
+    
+        else
+          echo \"[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: Backup failed\" >> $$LOG_FILE;
+        fi
+    
+        sleep 10800;
+      done
+      "
+
 volumes:
   # MySQL volumes
   mysql-config:
@@ -105,6 +170,18 @@ volumes:
       type: none
       o: bind
       device: ./container-volumes/mysql/init-scripts/
+  mysql-backup:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./container-volumes/backup/mysql/
+  mysql-secrets:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./container-volumes/docker-secrets/mysql/
 
   # PostgreSQL volumes
   postgres-config:
