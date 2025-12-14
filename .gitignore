@@ -218,11 +218,16 @@ roughwork/
 /.cspell
 .cspell/custom-dictionary-workspace.txt
 
+/container-volumes/docker-secrets
+/container-volumes/backup
+
 /container-volumes/mysql/var-lib-mysql
 /container-volumes/mysql/var-log-mysql
 
 /container-volumes/postgresql/var-lib-postgresql-data
 /container-volumes/postgresql/var-log-postgresql
+
+/container-volumes/mysql/etc-mysql/full_dump.sql
 
 mydatabase.db
 sample_application/backend/mydatabase.db
