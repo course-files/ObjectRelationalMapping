@@ -134,7 +134,7 @@ By separating `services.py` from `db.py` + `models.py`, you get:
 - A clear layer for testing: you can unit-test the backend logic without involving a specific database system.
 - A clear ORM layer that can be swapped out for another database without rewriting your service logic.
 
-This is classic, traditional layering, which scales far better than putting everything in one file and creating _"spaghetti code"_ that is challenging to maintain.
+This is classic, traditional layering, which scales better than putting everything in one file and creating _"spaghetti code"_ that is challenging to maintain.
 
 ## Lab Submission Instructions
 
