@@ -14,7 +14,7 @@
 See [https://github.com/course-files/ServingMLModels](https://github.com/course-files/ServingMLModels) for more information on setting up
 a reverse proxy (Nginx) server and a WSGI (Gunicorn) server for a production-ready deployment.
 
-![img.png](assets/images/OverallArchitecture.png)
+![img.jpg](assets/images/OverallArchitecture.jpg)
 
 ## Repository Structure
 
